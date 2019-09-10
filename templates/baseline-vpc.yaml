@@ -1,0 +1,318 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Resources: 
+    VPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            CidrBlock: 10.0.0.0/16
+            EnableDnsHostnames: True
+            EnableDnsSupport: True
+            Tags:
+                - Key: Name
+                  Value: !Sub '${AWS::StackName}'
+    PublicSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.0.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 0
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: !Sub '${AWS::StackName}-public1'
+            VpcId : !Ref VPC
+    PublicSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.1.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 1
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: !Sub '${AWS::StackName}-public2'
+            VpcId : !Ref VPC
+    PublicSubnet3:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.2.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 2
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: !Sub '${AWS::StackName}-public3'
+            VpcId : !Ref VPC
+    PrivateSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.3.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 0
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: !Sub '${AWS::StackName}-private1'
+            VpcId : !Ref VPC
+    PrivateSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.4.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 1
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-private2'
+            VpcId : !Ref VPC
+    PrivateSubnet3:
+        Type: AWS::EC2::Subnet
+        Properties : 
+            CidrBlock : 10.0.5.0/24
+            MapPublicIpOnLaunch : False
+            AvailabilityZone:
+              Fn::Select: 
+                - 2
+                - Fn::GetAZs: ""
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-private3'
+            VpcId : !Ref VPC
+    InternetGateway:
+        Type: AWS::EC2::InternetGateway
+        Properties : 
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-igw'
+    InternetGatewayAttachment:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties : 
+            InternetGatewayId : !Ref InternetGateway
+            VpcId : !Ref VPC
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties : 
+            Tags : 
+                - Key: Name
+                  Value: '${AWS::StackName}-public-rt'
+            VpcId : !Ref VPC
+    PublicRoute:
+        Type: AWS::EC2::Route
+        Properties : 
+            DestinationCidrBlock : 0.0.0.0/0
+            GatewayId : !Ref InternetGateway
+            RouteTableId : !Ref PublicRouteTable
+    PublicSubnetRouteTableAssociation1:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PublicRouteTable
+            SubnetId : !Ref PublicSubnet1
+    PublicSubnetRouteTableAssociation2:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PublicRouteTable
+            SubnetId : !Ref PublicSubnet2
+    PublicSubnetRouteTableAssociation3:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PublicRouteTable
+            SubnetId : !Ref PublicSubnet3
+    NatGateway1:
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId:
+                Fn::GetAtt:
+                - EIP1
+                - AllocationId
+            SubnetId:
+                Ref: PrivateSubnet1
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-nat-gw'
+    EIP1:
+        DependsOn: InternetGatewayAttachment
+        Type: AWS::EC2::EIP
+        Properties:
+            Domain: vpc
+    NatGateway2:
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId:
+                Fn::GetAtt:
+                - EIP2
+                - AllocationId
+            SubnetId:
+                Ref: PrivateSubnet2
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-nat-gw'
+    EIP2:
+        DependsOn: InternetGatewayAttachment
+        Type: AWS::EC2::EIP
+        Properties:
+            Domain: vpc
+    NatGateway3:
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId:
+                Fn::GetAtt:
+                - EIP3
+                - AllocationId
+            SubnetId:
+                Ref: PrivateSubnet3
+            Tags:
+                - Key: Name
+                  Value: '${AWS::StackName}-nat-gw'
+    EIP3:
+        DependsOn: InternetGatewayAttachment
+        Type: AWS::EC2::EIP
+        Properties:
+            Domain: vpc
+    PrivateRouteTable1:
+        Type: AWS::EC2::RouteTable
+        Properties : 
+            Tags : 
+                - Key: Name
+                  Value: '${AWS::StackName}-private-rt1'
+            VpcId : !Ref VPC
+    PrivateRoute1:
+        Type: AWS::EC2::Route
+        Properties : 
+            DestinationCidrBlock : 0.0.0.0/0
+            NatGatewayId : !Ref NatGateway1
+            RouteTableId : !Ref PrivateRouteTable1
+    PrivateSubnetRouteTableAssociation1:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PrivateRouteTable1
+            SubnetId : !Ref PrivateSubnet1
+    PrivateRouteTable2:
+        Type: AWS::EC2::RouteTable
+        Properties : 
+            Tags : 
+                - Key: Name
+                  Value: '${AWS::StackName}-private-rt2'
+            VpcId : !Ref VPC
+    PrivateRoute2:
+        Type: AWS::EC2::Route
+        Properties : 
+            DestinationCidrBlock : 0.0.0.0/0
+            NatGatewayId : !Ref NatGateway2
+            RouteTableId : !Ref PrivateRouteTable2
+    PrivateSubnetRouteTableAssociation2:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PrivateRouteTable2
+            SubnetId : !Ref PrivateSubnet2
+    PrivateRouteTable3:
+        Type: AWS::EC2::RouteTable
+        Properties : 
+            Tags : 
+                - Key: Name
+                  Value: '${AWS::StackName}-private-rt3'
+            VpcId : !Ref VPC
+    PrivateRoute3:
+        Type: AWS::EC2::Route
+        Properties : 
+            DestinationCidrBlock : 0.0.0.0/0
+            NatGatewayId : !Ref NatGateway3
+            RouteTableId : !Ref PrivateRouteTable3
+    PrivateSubnetRouteTableAssociation3:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties : 
+            RouteTableId : !Ref PrivateRouteTable3
+            SubnetId : !Ref PrivateSubnet3
+    Ec2Vpcndpoint:
+        Type: AWS::EC2::VPCEndpoint
+        Properties : 
+            PrivateDnsEnabled : True
+            ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2'
+            SubnetIds : 
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+                - !Ref PrivateSubnet3
+            VpcEndpointType : Interface
+            VpcId : !Ref VPC
+    Ec2MessagesVpcndpoint:
+        Type: AWS::EC2::VPCEndpoint
+        Properties : 
+            PrivateDnsEnabled : True
+            ServiceName : !Sub 'com.amazonaws.${AWS::Region}.ec2messages'
+            SubnetIds : 
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+                - !Ref PrivateSubnet3
+            VpcEndpointType : Interface
+            VpcId : !Ref VPC
+    SsmVpcndpoint:
+        Type: AWS::EC2::VPCEndpoint
+        Properties : 
+            PrivateDnsEnabled : True
+            ServiceName : !Sub 'com.amazonaws.${AWS::Region}.ssm'
+            SubnetIds : 
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+                - !Ref PrivateSubnet3
+            VpcEndpointType : Interface
+            VpcId : !Ref VPC
+    SsmMessagesVpcndpoint:
+        Type: AWS::EC2::VPCEndpoint
+        Properties : 
+            PrivateDnsEnabled : True
+            ServiceName : !Sub 'com.amazonaws.${AWS::Region}.ssmmessages'
+            SubnetIds : 
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+                - !Ref PrivateSubnet3
+            VpcEndpointType : Interface
+            VpcId : !Ref VPC
+    LogsVpcndpoint:
+        Type: AWS::EC2::VPCEndpoint
+        Properties : 
+            PrivateDnsEnabled : True
+            ServiceName : !Sub 'com.amazonaws.${AWS::Region}.logs'
+            SubnetIds : 
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+                - !Ref PrivateSubnet3
+            VpcEndpointType : Interface
+            VpcId : !Ref VPC
+    Ec2SsmRole:
+        Type: AWS::IAM::Role
+        Properties : 
+            AssumeRolePolicyDocument: 
+                Version: "2012-10-17"
+                Statement: 
+                    - 
+                      Effect: "Allow"
+                      Principal: 
+                        Service: 
+                          - "ec2.amazonaws.com"
+                      Action: 
+                        - "sts:AssumeRole"
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+    Ec2SsmInstanceProfile:
+        Type: AWS::IAM::InstanceProfile
+        Properties : 
+            Roles : 
+                - !Ref Ec2SsmRole
+
+Outputs:
+    VPC:
+        Description: VPC where the spot instances will run on
+        Value: !Ref VPC
+    Ec2SsmInstanceProfile:
+        Description: Instance profile that will be used with the EC2 spot instances
+        Value: !Ref Ec2SsmInstanceProfile
